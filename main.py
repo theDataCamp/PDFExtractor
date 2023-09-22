@@ -48,7 +48,7 @@ class PDFExtractor(tk.Tk):
         super().__init__()
         self.selected_pages = []
         self.queue = queue.Queue()
-        self.after(100, self.check_queue)
+        self.check_queue()
 
         self.pdf_manager = PDFManager()
         self.setup_ui()
@@ -95,12 +95,11 @@ class PDFExtractor(tk.Tk):
 
     def check_queue(self):
         try:
-            task = self.queue.get(0)
+            task = self.queue.get_nowait()  # Non-blocking get
             task()
+            self.after(10, self.check_queue)  # Check again shortly after this task
         except queue.Empty:
-            pass
-
-        self.after(100, self.check_queue)
+            self.after(1000, self.check_queue)  # If empty, wait a bit longer before checking again
 
     def on_mouse_scroll(self, event):
         self.canvas.yview_scroll(-1 * int(event.delta / 120), "units")
@@ -146,7 +145,7 @@ class PDFExtractor(tk.Tk):
 
         for idx, img in enumerate(self.thumbnail_manager.page_imgs):
             img_tk = ImageTk.PhotoImage(image=img)
-            btn = ttk.Checkbutton(self.canvas_frame, image=img_tk, command=lambda i=idx: self.toggle_page(i))
+            btn = ttk.Checkbutton(self.canvas_frame, image=img_tk, command=lambda idx=idx: self.toggle_page(idx))
             btn.image = img_tk
             btn.grid(row=idx // 4, column=idx % 4, padx=5, pady=5)
 
