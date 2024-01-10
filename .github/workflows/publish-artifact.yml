@@ -60,14 +60,14 @@ jobs:
       if: contains(matrix.os, 'ubuntu-latest')
       uses: actions/upload-artifact@v3
       with:
-        name: TimerLinux
+        name: LinuxPDExtractor
         path: ./dist/PDFExtractor
 
     - name: Upload Artifacts (Windows)
       if: contains(matrix.os, 'windows-latest')
       uses: actions/upload-artifact@v3
       with:
-        name: WindowsTimer
+        name: WindowsPDFExtractor
         path: .\dist\PDFExtractor.exe
 
     - name: Upload requirements.txt
