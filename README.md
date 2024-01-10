@@ -1,7 +1,8 @@
 # PDF Extractor
 
 ## Requirements
-- need poppler for your target os, for windows go to the github project https://github.com/oschwartz10612/poppler-windows 
+- need poppler for your target os, for windows go to the github project https://github.com/oschwartz10612/poppler-windows
+- You also need C++ Redistributable (x64 and x86) found : https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist?view=msvc-170
 
 # Steps to setup Poppler
 
