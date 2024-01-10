@@ -14,11 +14,11 @@
    - Select Advanced system settings on the left.
    - In the System Properties window, click the Environment Variables button.
    - Under **"System Variables"**, find and select the **PATH** variable, then click the Edit button.
-   - Add the path to the bin directory where you extracted the Poppler binaries. For example, if you extracted the files to `C:\poppler`, you would add `C:\poppler\bin`.
+   - Add the path to the bin directory where you extracted the Poppler binaries. For example, if you extracted the files to `C:\poppler`, you would add `C:\poppler\Library\bin`.
    - Click **OK** to close each window.
 
 3. **Testing the Installation**:
 
 To ensure that Poppler's utilities are working, open a Command Prompt or PowerShell and type:
 
-        `pdftotext --version`
+         pdftotext --version
