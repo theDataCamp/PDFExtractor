@@ -1,7 +1,11 @@
+import time
 import tkinter as tk
 from tkinter import filedialog, Scale, ttk, messagebox
+
+import cv2
+import numpy as np
 from pdf2image import convert_from_path
-from PIL import ImageTk
+from PIL import ImageTk, Image
 from PyPDF2 import PdfReader, PdfWriter
 import threading
 import queue
@@ -37,10 +41,15 @@ class ThumbnailManager:
         size = self.slider.get()
 
         for img in self.pages:
-            img_width = img.width
-            img_height = img.height
-            img_resized = img.resize((size, size * int(img_height / img_width)))
+            img_resized = self.resize_image_with_opencv(img, (size, size))
             self.page_imgs.append(img_resized)
+
+    @staticmethod
+    def resize_image_with_opencv(image, size):
+        image_np = np.array(image)
+        resized_image_np = cv2.resize(image_np, size, interpolation=cv2.INTER_LINEAR)
+        resized_image = Image.fromarray(resized_image_np)
+        return resized_image
 
 
 class PDFExtractor(tk.Tk):
@@ -53,14 +62,27 @@ class PDFExtractor(tk.Tk):
         self.pdf_manager = PDFManager()
         self.setup_ui()
         self.thumbnail_manager = ThumbnailManager(self.slider)
+        self.setup_custom_style()
+
+    def setup_custom_style(self):
+        style = ttk.Style()
+        style.configure("CustomCheckbutton.TCheckbutton", background="white", foreground="black")
+        style.map("CustomCheckbutton.TCheckbutton",
+                  background=[('selected', 'green')],
+                  foreground=[('selected', 'white')])
 
     def setup_ui(self):
         self.load_btn = ttk.Button(self, text="Load PDF", command=self.load_pdf)
         self.load_btn.pack(pady=20)
 
-        self.slider = Scale(self, from_=50, to=500, orient="horizontal", label="Thumbnail Size")
+        self.slider_value = tk.IntVar()
+        self.slider = tk.Scale(self, from_=50, to=500, orient="horizontal", label="Thumbnail Size",
+                               variable=self.slider_value)
         self.slider.pack(pady=20)
-        self.slider.bind("<Motion>", self.update_images)
+        self.slider_value.trace_add("write", lambda name, index, mode: self.update_images())
+
+        self.last_slider_value = self.slider_value.get()  # Initialize the last slider value
+        self.threshold = 5  # Define the threshold for slider movement
 
         self.canvas = tk.Canvas(self)
         self.canvas.pack(side="left", fill=tk.BOTH, expand=True)
@@ -136,16 +158,24 @@ class PDFExtractor(tk.Tk):
         self.load_btn.config(state=tk.NORMAL)
 
     def update_images(self, event=None):
-        self.thumbnail_manager.update_images(self.pdf_manager.pages)
-        self.show_thumbnails()
+        curren_slider_value = self.slider_value.get()
+        if abs(curren_slider_value - self.last_slider_value) >= self.threshold:
+            self.thumbnail_manager.update_images(self.pdf_manager.pages)
+            self.show_thumbnails()
+            self.last_slider_value = curren_slider_value
 
     def show_thumbnails(self):
+        self.clear_thumbnails()
+        self.create_thumbnails()
+
+    def clear_thumbnails(self):
         for widget in self.canvas_frame.winfo_children():
             widget.destroy()
 
+    def create_thumbnails(self):
         for idx, img in enumerate(self.thumbnail_manager.page_imgs):
             img_tk = ImageTk.PhotoImage(image=img)
-            btn = ttk.Checkbutton(self.canvas_frame, image=img_tk, command=lambda idx=idx: self.toggle_page(idx))
+            btn = ttk.Checkbutton(self.canvas_frame, image=img_tk,  style="CustomCheckbutton.TCheckbutton", command=lambda idx=idx: self.toggle_page(idx))
             btn.image = img_tk
             btn.grid(row=idx // 4, column=idx % 4, padx=5, pady=5)
 
@@ -157,14 +187,20 @@ class PDFExtractor(tk.Tk):
             self.selected_pages.remove(idx)
         else:
             self.selected_pages.append(idx)
+        self.selected_pages.sort()  # Ensure the list is always sorted
 
     def save_pdf(self):
-        self.save_btn.config(state=tk.DISABLED)  # Disable the button
-        self.status_label.config(text="Extracting pages... Please wait.")
-        self.update_idletasks()  # Force the GUI to update
-        threading.Thread(target=self.save_pdf_thread).start()
+        if len(self.selected_pages) > 0 :
+            self.save_btn.config(state=tk.DISABLED)  # Disable the button
+            self.status_label.config(text="Extracting pages... Please wait.")
+            self.update_idletasks()  # Force the GUI to update
+            threading.Thread(target=self.save_pdf_thread).start()
+        else:
+            messagebox.showerror("Error", "Please select a page to extract")
 
     def save_pdf_thread(self):
+        # Sort the pages again for safety, though it should already be sorted
+        self.selected_pages.sort()
         self.pdf_manager.save_pdf(self.selected_pages, self.save_entry.get())
         self.queue.put(self.on_extraction_complete)
 
